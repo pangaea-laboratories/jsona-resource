@@ -36,19 +36,29 @@ export const JsonApiResource = function(resource, httpService) {
     let endpoints = {}
     methods.forEach((method) => {
         if(method.pluralize) {
-            endpoints[camelCase(`${method.name}-${pluralize(resource.name)}`)] = function(params = {}) {
+            endpoints[camelCase(`${method.name}-${pluralize(resource.name)}`)] = function(params = {}, callback) {
                 return new Promise((resolve, reject) => {
                     httpService[`${method.method.toLowerCase()}`](resource.name, params)
-                    .then((r) => resolve(dataFormatter.deserialize(r.data), r, dataFormatter))
-                    .catch((e) => reject(e))
+                    .then((response) => {
+                        resolve(dataFormatter.deserialize(response.data))
+                        if(typeof callback === 'function') {
+                            callback(response, dataFormatter)
+                        }
+                    })
+                    .catch((error) => reject(error))
                 })
             }
         } else {
-            endpoints[camelCase(`${method.name}-${pluralize.singular(resource.name)}`)] = function(id, params = {}) {
+            endpoints[camelCase(`${method.name}-${pluralize.singular(resource.name)}`)] = function(params = {}, callback) {
                 return new Promise((resolve, reject) => {
                     httpService[`${method.method.toLowerCase()}`](resource.name, params)
-                    .then((r) => resolve(dataFormatter.deserialize(r.data), r, dataFormatter))
-                    .catch((e) => reject(e))
+                    .then((response) => {
+                        resolve(dataFormatter.deserialize(response.data))
+                        if(typeof callback === 'function') {
+                            callback(response, dataFormatter)
+                        }
+                    })
+                    .catch((error) => reject(error))
                 })
             }
         }
@@ -65,3 +75,4 @@ export const JsonApiResources = function(resources, httpService) {
 }
 
 export default { JsonApiResource, JsonApiResources, dataFormatter }
+
