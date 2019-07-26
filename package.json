@@ -1,0 +1,21 @@
+{
+  "name": "jsona-resource",
+  "version": "0.0.4",
+  "description": "Consume jsonapi with Jsona",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pangaea-laboratories/jsona-resource.git"
+  },
+  "author": "Daniel Yovchev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pangaea-laboratories/jsona-resource/issues"
+  },
+  "homepage": "https://github.com/pangaea-laboratories/jsona-resource",
+  "dependencies": {
+    "lodash": "^4.17.10",
+    "luxon": "^1.3.1",
+    "vue": "^2.5.16"
+  }
+}
