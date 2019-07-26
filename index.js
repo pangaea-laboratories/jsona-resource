@@ -30,37 +30,33 @@ export const methods = [
     },
 ]
 
-export const dataFormatter = new Jsona()
+const dataFormatter = new Jsona()
+
+const endpoint = (resource, method, httpService) => {
+    return function(params = {}, callback) {
+        if(params.include instanceof Array) {
+            params.include = params.include.join(',')
+        }
+        return new Promise((resolve, reject) => {
+            httpService[`${method.method.toLowerCase()}`](resource.name, { params })
+            .then((response) => {
+                resolve(dataFormatter.deserialize(response.data))
+                if(typeof callback === 'function') {
+                    callback(response, dataFormatter)
+                }
+            })
+            .catch((error) => reject(error))
+        })
+    }
+}
 
 export const JsonApiResource = function(resource, httpService) {
     let endpoints = {}
     methods.forEach((method) => {
         if(method.pluralize) {
-            endpoints[camelCase(`${method.name}-${pluralize(resource.name)}`)] = function(params = {}, callback) {
-                return new Promise((resolve, reject) => {
-                    httpService[`${method.method.toLowerCase()}`](resource.name, params)
-                    .then((response) => {
-                        resolve(dataFormatter.deserialize(response.data))
-                        if(typeof callback === 'function') {
-                            callback(response, dataFormatter)
-                        }
-                    })
-                    .catch((error) => reject(error))
-                })
-            }
+            endpoints[camelCase(`${method.name}-${pluralize(resource.name)}`)] = endpoint(resource, method, httpService)
         } else {
-            endpoints[camelCase(`${method.name}-${pluralize.singular(resource.name)}`)] = function(params = {}, callback) {
-                return new Promise((resolve, reject) => {
-                    httpService[`${method.method.toLowerCase()}`](resource.name, params)
-                    .then((response) => {
-                        resolve(dataFormatter.deserialize(response.data))
-                        if(typeof callback === 'function') {
-                            callback(response, dataFormatter)
-                        }
-                    })
-                    .catch((error) => reject(error))
-                })
-            }
+            endpoints[camelCase(`${method.name}-${pluralize.singular(resource.name)}`)] = endpoint(resource, method, httpService)
         }
     })
     return endpoints
@@ -74,5 +70,4 @@ export const JsonApiResources = function(resources, httpService) {
     return endpoints
 }
 
-export default { JsonApiResource, JsonApiResources, dataFormatter }
-
+export default JsonApiResources
