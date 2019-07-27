@@ -58,33 +58,31 @@ export const JsonApiResource = function(resource, httpService) {
     let endpoints = {}
     methods.forEach((method) => {
         if(method.pluralize) {
-            endpoints[camelCase(`${method.name}-${pluralize(resource.name)}`)] = function(params = {}, callback) {
+            endpoints[camelCase(`${method.name}-${pluralize(resource)}`)] = function(params = {}, callback) {
                 return new Promise((resolve, reject) => {
-                    httpService[`${method.method.toLowerCase()}`](resource.name, { params: parseParams(params) })
+                    httpService[`${method.method.toLowerCase()}`](resource, { params: parseParams(params) })
                     .then((response) => responseFunction(response, callback, resolve))
                     .catch((error) => errorFunction(error, callback, reject))
                 })
             }
         } else {
-            // api.fetchAccount(1, {}) // Fech account with id 1 and params
-            // api.fetchAccount({}, {}) // Fech account.id with params
-            // api.fetchAccount({}, '', {}) // Fetch account.id appendUrl and parms
-            // api.fetchAccount(accounts[0], 'accountProducts')
-            endpoints[camelCase(`${method.name}-${pluralize.singular(resource.name)}`)] = function() {
-                // we have the full resource
+            endpoints[camelCase(`${method.name}-${pluralize.singular(resource)}`)] = function() {
                 let id = isObject(arguments[0]) ? arguments[0].id : arguments[0]
                 let uri = isString(arguments[1]) ? `/${arguments[1]}` : ''
                 let params = isObject(arguments[1]) ? arguments[1] : arguments[2] || {}
                 let callback = isFunction(arguments[2]) ? arguments[2] : arguments[3]
 
                 return new Promise((resolve, reject) => {
-                    httpService[`${method.method.toLowerCase()}`](`${resource.name}/${id}${uri}`, { params: parseParams(params) })
+                    httpService[`${method.method.toLowerCase()}`](`${resource}/${id}${uri}`, {
+                        params: parseParams(params)
+                    })
                     .then((response) => responseFunction(response, callback, resolve))
                     .catch((error) => errorFunction(error, callback, reject))
                 })
             }
         }
     })
+
     return endpoints
 }
 
@@ -93,6 +91,7 @@ export const JsonApiResources = function(resources, httpService) {
     resources.forEach((resource) => {
         merge(endpoints, JsonApiResource(resource, httpService))
     })
+
     return endpoints
 }
 

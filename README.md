@@ -30,6 +30,87 @@ const params = {
 
 const resource = JsonApiResource('orders', httpService)
 
+resource.fetchTown(123, { params }).then((town) => {
+    console.log(town) // will output:
+    /* {
+    type: 'town',
+    id: '123',
+    name: 'Barcelona',
+    country: {
+        type: 'country',
+        id: '32',
+        name: 'Spain'
+        },
+        relationshipNames: ['country']
+    } */
+})
+
+resource.fetchTown(123, 'country').then((country) => {
+    console.log(country) // will output:
+    /* {
+        type: 'country',
+        id: '32',
+        name: 'Spain'
+    } */
+})
+
+```
+
+To setup multiple resources 'api.js'
+
+```javascript
+import axios from '@/utils/axios'
+import { JsonApiResources } from '@/jsonapi'
+
+const httpService = axios.create({
+    baseURL: '/api/v1',
+    headers: {
+        'Content-Type': 'application/vnd.api+json',
+    },
+});
+
+export default {
+
+    ...JsonApiResources([
+        'orders',
+        'accounts',
+        'products',
+    ], httpService),
+
+    getVersion(params) {
+        return new Promise((resolve, reject) => {
+            httpService.get('version', { params })
+            .then((response) => resolve(response))
+            .catch((error) => reject(error))
+        })
+    },
+
+}
+```
+
+
+To use them
+
+```javascript
+import api from '@/api'
+
+api.fetchOrder(1)  // single record
+api.fetchOrders()  // all orders
+api.createOrder({...})  // create new order
+api.updateOrder(order)  // update order
+api.removeOrder(order) // delete order
+
+api.fetchAccount(1)  // single record
+api.fetchAccounts()  // all accounts
+api.createAccount({...})  // create new account
+api.updateAccount(account)  // update account
+api.removeAccount(account) // delete account
+```
+
+To access raw data response
+
+```javascript
+
 const accessRawResponseCallback = (rawResponse, dataFormatter) => {
     console.log(rawResponse) // will output:
     /* {
@@ -82,59 +163,8 @@ const accessRawResponseCallback = (rawResponse, dataFormatter) => {
     }*/
 }
 
-resource.fetchTown(123, { params }, accessRawResponseCallback).then((town) => {
-    console.log(town) // will output:
-    /* {
-    type: 'town',
-    id: '123',
-    name: 'Barcelona',
-    country: {
-        type: 'country',
-        id: '32',
-        name: 'Spain'
-        },
-        relationshipNames: ['country']
-    } */
-})
-```
+api.fetchTown(123, { params }, accessRawResponseCallback)
 
-To setup multiple resources 'api.js'
-
-```javascript
-import axios from '@/utils/axios'
-import { JsonApiResources } from '@/jsonapi'
-
-const httpService = axios.create({
-    baseURL: '/api/v1',
-    headers: {
-        'Content-Type': 'application/vnd.api+json',
-    },
-});
-
-export default JsonApiResources([
-    { name: 'orders' },
-    { name: 'accounts' },
-    { name: 'products' },
-], httpService)
-```
-
-
-To use them
-
-```javascript
-import api from '@/api'
-
-api.fetchOrder(1)  // single record
-api.fetchOrders()  // all orders
-api.createOrder({...})  // create new order
-api.updateOrder(order)  // update order
-api.removeOrder(order) // delete order
-
-api.fetchAccount(1)  // single record
-api.fetchAccounts()  // all accounts
-api.createAccount({...})  // create new account
-api.updateAccount(account)  // update account
-api.removeAccount(account) // delete account
 ```
 
 # jsona-resource
