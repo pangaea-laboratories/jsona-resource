@@ -167,4 +167,17 @@ api.fetchTown(123, { params }, accessRawResponseCallback)
 
 ```
 
+
+Endpoints
+
+```javascript
+
+api.fetchOrder({ id: 1, type: 'orders' } || 1, reletionship, params) // GET
+api.fetchOrders(params) // GET
+api.createOrder({ type: 'orders' }, params) // POST
+api.updateOrder({ id: 1, type: 'orders' }, params) // PATCH
+api.removeOrder({ id: 1 } || 1) // DELETE
+
+```
+
 # jsona-resource

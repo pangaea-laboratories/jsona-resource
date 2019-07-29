@@ -6,92 +6,132 @@ export const methods = [
     {
         name: 'fetch',
         method: 'GET',
-        pluralize: true
+        pluralize: true,
+        promise(resource, http, params, callback) {
+            return new Promise((resolve, reject) => {
+                http[`${this.method.toLowerCase()}`](resource, parseParams(params) || {})
+                .then((response) => responseJsona(response, callback, resolve))
+                .catch((error) => responseError(error, callback, reject))
+            })
+        }
     },
     {
         name: 'fetch',
         method: 'GET',
-        pluralize: false
+        pluralize: false,
+        promise(resource, http, entity, related, params, callback) {
+            if(isObject(entity)) {
+                entity = entity.id
+            }
+            if(isString(related)) {
+                params = params
+                callback = callback
+                related = related.startsWith('/') ? related : `/${related}`
+            }
+            if(isObject(related)) {
+                callback = params
+                params = related
+                related = ''
+            }
+
+            return new Promise((resolve, reject) => {
+                http[`${this.method.toLowerCase()}`](`${resource}/${entity}${related}`, {
+                    params: parseParams(params)
+                })
+                .then((response) => responseJsona(response, callback, resolve))
+                .catch((error) => responseError(error, callback, reject))
+            })
+        }
     },
     {
         name: 'create',
         method: 'POST',
-        pluralize: false
+        pluralize: false,
+        promise(resource, http, entity, callback) {
+            entity = isObject(entity) ? { stuff: entity } : { stuff: {} }
+            entity.stuff.type = resource
+            let params = dataFormatter.serialize(entity)
+            return new Promise((resolve, reject) => {
+                http[`${this.method.toLowerCase()}`](`${resource}`, params)
+                .then((response) => responseJsona(response, callback, resolve))
+                .catch((error) => responseError(error, callback, reject))
+            })
+        }
     },
     {
         name: 'update',
-        method: 'PUT',
-        pluralize: false
+        method: 'PATCH',
+        pluralize: false,
+        promise(resource, http, entity, callback) {
+            let id = isObject(entity) ? entity.id : entity
+            let params = dataFormatter.serialize({ stuff: entity })
+            return new Promise((resolve, reject) => {
+                http[`${this.method.toLowerCase()}`](`${resource}/${id}`, params)
+                .then((response) => responseJsona(response, callback, resolve))
+                .catch((error) => responseError(error, callback, reject))
+            })
+        }
     },
     {
-        name: 'remove',
-        method: 'delete',
-        pluralize: false
+        name: 'delete',
+        method: 'DELETE',
+        pluralize: false,
+        promise(resource, http, entity, callback) {
+            let id = isObject(entity) ? entity.id : entity
+            return new Promise((resolve, reject) => {
+                http[`${this.method.toLowerCase()}`](`${resource}/${id}`)
+                .then((response) => responseRaw(response, callback, resolve))
+                .catch((error) => responseError(error, callback, reject))
+            })
+        }
     },
 ]
 
 const dataFormatter = new Jsona()
 
 const parseParams = (params) => {
-    if(params.include instanceof Array) {
+    if(params && params.include instanceof Array) {
         params.include = params.include.join(',')
     }
-
     return params
 }
 
-const errorFunction = (error, callback, reject) => {
-    reject(error)
+const responseRaw = (response, callback, resolve) => {
+    resolve(response)
     if(isFunction(callback)) {
-        callback(error)
+        callback(response)
     }
 }
 
-const responseFunction = (response, callback, resolve) => {
+const responseError = (error, callback, reject) => {
+    reject(error)
+    if(isFunction(callback)) {
+        callback({ error })
+    }
+}
+
+const responseJsona = (response, callback, resolve) => {
     resolve(dataFormatter.deserialize(response.data))
     if(isFunction(callback)) {
         callback(response, dataFormatter)
     }
 }
 
-export const JsonApiResource = function(resource, httpService) {
+export const JsonApiResource = function(resource, http) {
     let endpoints = {}
     methods.forEach((method) => {
-        if(method.pluralize) {
-            endpoints[camelCase(`${method.name}-${pluralize(resource)}`)] = function(params = {}, callback) {
-                return new Promise((resolve, reject) => {
-                    httpService[`${method.method.toLowerCase()}`](resource, { params: parseParams(params) })
-                    .then((response) => responseFunction(response, callback, resolve))
-                    .catch((error) => errorFunction(error, callback, reject))
-                })
-            }
-        } else {
-            endpoints[camelCase(`${method.name}-${pluralize.singular(resource)}`)] = function() {
-                let id = isObject(arguments[0]) ? arguments[0].id : arguments[0]
-                let uri = isString(arguments[1]) ? `/${arguments[1]}` : ''
-                let params = isObject(arguments[1]) ? arguments[1] : arguments[2] || {}
-                let callback = isFunction(arguments[2]) ? arguments[2] : arguments[3]
-
-                return new Promise((resolve, reject) => {
-                    httpService[`${method.method.toLowerCase()}`](`${resource}/${id}${uri}`, {
-                        params: parseParams(params)
-                    })
-                    .then((response) => responseFunction(response, callback, resolve))
-                    .catch((error) => errorFunction(error, callback, reject))
-                })
-            }
-        }
+        let resourceName = (method.pluralize) ? pluralize(resource) : pluralize.singular(resource)
+        let endpointName = camelCase(`${method.name}-${resourceName}`)
+        endpoints[endpointName] = (...args) => method.promise(pluralize(resource), http, ...args)
     })
-
     return endpoints
 }
 
-export const JsonApiResources = function(resources, httpService) {
+export const JsonApiResources = function(resources, http) {
     let endpoints = {}
     resources.forEach((resource) => {
-        merge(endpoints, JsonApiResource(resource, httpService))
+        merge(endpoints, JsonApiResource(resource, http))
     })
-
     return endpoints
 }
 
