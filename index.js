@@ -1,17 +1,29 @@
+import axios from 'axios'
 import Jsona from 'jsona'
 import pluralize from 'pluralize'
-import { merge, camelCase, isObject, isString, isFunction } from 'lodash'
+import { extend, merge, camelCase, isObject, isString, isFunction } from 'lodash'
+
+const defaultConfig = {
+    httpService: axios,
+    errorEventHandler: function(error, callback) {
+        callback(error)
+    }
+}
 
 export const methods = [
     {
         name: 'fetch',
         method: 'GET',
         pluralize: true,
-        promise(resource, http, params, callback) {
+        promise(resource, config, params, callback) {
             return new Promise((resolve, reject) => {
-                http[`${this.method.toLowerCase()}`](resource, parseParams(params) || {})
+                config.httpService[`${this.method.toLowerCase()}`](resource, parseParams(params) || {})
                 .then((response) => responseJsona(response, callback, resolve))
-                .catch((error) => responseError(error, callback, reject))
+                .catch((error) => {
+                    config.errorEventHandler(error, (error) => {
+                        responseError(error, callback, reject)
+                    })
+                })
             })
         }
     },
@@ -19,7 +31,7 @@ export const methods = [
         name: 'fetch',
         method: 'GET',
         pluralize: false,
-        promise(resource, http, entity, related, params, callback) {
+        promise(resource, config, entity, related, params, callback) {
             if(isObject(entity)) {
                 entity = entity.id
             }
@@ -35,11 +47,15 @@ export const methods = [
             }
 
             return new Promise((resolve, reject) => {
-                http[`${this.method.toLowerCase()}`](`${resource}/${entity}${related}`, {
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${entity}${related}`, {
                     params: parseParams(params)
                 })
                 .then((response) => responseJsona(response, callback, resolve))
-                .catch((error) => responseError(error, callback, reject))
+                .catch((error) => {
+                    config.errorEventHandler(error, (error) => {
+                        responseError(error, callback, reject)
+                    })
+                })
             })
         }
     },
@@ -47,14 +63,18 @@ export const methods = [
         name: 'create',
         method: 'POST',
         pluralize: false,
-        promise(resource, http, entity, callback) {
+        promise(resource, config, entity, callback) {
             entity = isObject(entity) ? { stuff: entity } : { stuff: {} }
             entity.stuff.type = resource
             let params = dataFormatter.serialize(entity)
             return new Promise((resolve, reject) => {
-                http[`${this.method.toLowerCase()}`](`${resource}`, params)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}`, params)
                 .then((response) => responseJsona(response, callback, resolve))
-                .catch((error) => responseError(error, callback, reject))
+                .catch((error) => {
+                    config.errorEventHandler(error, (error) => {
+                        responseError(error, callback, reject)
+                    })
+                })
             })
         }
     },
@@ -62,13 +82,17 @@ export const methods = [
         name: 'update',
         method: 'PATCH',
         pluralize: false,
-        promise(resource, http, entity, callback) {
+        promise(resource, config, entity, callback) {
             let id = isObject(entity) ? entity.id : entity
             let params = dataFormatter.serialize({ stuff: entity })
             return new Promise((resolve, reject) => {
-                http[`${this.method.toLowerCase()}`](`${resource}/${id}`, params)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${id}`, params)
                 .then((response) => responseJsona(response, callback, resolve))
-                .catch((error) => responseError(error, callback, reject))
+                .catch((error) => {
+                    config.errorEventHandler(error, (error) => {
+                        responseError(error, callback, reject)
+                    })
+                })
             })
         }
     },
@@ -76,12 +100,16 @@ export const methods = [
         name: 'delete',
         method: 'DELETE',
         pluralize: false,
-        promise(resource, http, entity, callback) {
+        promise(resource, config, entity, callback) {
             let id = isObject(entity) ? entity.id : entity
             return new Promise((resolve, reject) => {
-                http[`${this.method.toLowerCase()}`](`${resource}/${id}`)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${id}`)
                 .then((response) => responseRaw(response, callback, resolve))
-                .catch((error) => responseError(error, callback, reject))
+                .catch((error) => {
+                    config.errorEventHandler(error, (error) => {
+                        responseError(error, callback, reject)
+                    })
+                })
             })
         }
     },
@@ -106,7 +134,7 @@ const responseRaw = (response, callback, resolve) => {
 const responseError = (error, callback, reject) => {
     reject(error)
     if(isFunction(callback)) {
-        callback({ error })
+        callback({error})
     }
 }
 
@@ -117,20 +145,21 @@ const responseJsona = (response, callback, resolve) => {
     }
 }
 
-export const JsonApiResource = function(resource, http) {
+export const JsonApiResource = function(resource, config = {}) {
     let endpoints = {}
+    config = extend(defaultConfig, config)
     methods.forEach((method) => {
         let resourceName = (method.pluralize) ? pluralize(resource) : pluralize.singular(resource)
         let endpointName = camelCase(`${method.name}-${resourceName}`)
-        endpoints[endpointName] = (...args) => method.promise(pluralize(resource), http, ...args)
+        endpoints[endpointName] = (...args) => method.promise(pluralize(resource), config, ...args)
     })
     return endpoints
 }
 
-export const JsonApiResources = function(resources, http) {
+export const JsonApiResources = function(resources, config = {}) {
     let endpoints = {}
     resources.forEach((resource) => {
-        merge(endpoints, JsonApiResource(resource, http))
+        merge(endpoints, JsonApiResource(resource, config))
     })
     return endpoints
 }
