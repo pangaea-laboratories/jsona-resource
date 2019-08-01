@@ -83,10 +83,9 @@ export const methods = [
         method: 'PATCH',
         pluralize: false,
         promise(resource, config, entity, callback) {
-            let id = isObject(entity) ? entity.id : entity
             let params = dataFormatter.serialize({ stuff: entity })
             return new Promise((resolve, reject) => {
-                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${id}`, params)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${getEntityId(entity)}`, params)
                 .then((response) => responseJsona(response, callback, resolve))
                 .catch((error) => {
                     config.errorEventHandler(error, (error) => {
@@ -101,9 +100,8 @@ export const methods = [
         method: 'DELETE',
         pluralize: false,
         promise(resource, config, entity, callback) {
-            let id = isObject(entity) ? entity.id : entity
             return new Promise((resolve, reject) => {
-                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${id}`)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${getEntityId(entity)}`)
                 .then((response) => responseRaw(response, callback, resolve))
                 .catch((error) => {
                     config.errorEventHandler(error, (error) => {
@@ -115,7 +113,11 @@ export const methods = [
     },
 ]
 
-const dataFormatter = new Jsona()
+export const dataFormatter = new Jsona()
+
+const getEntityId = (entity) => {
+    return isObject(entity) ? entity.id : entity
+}
 
 const parseParams = (params) => {
     if(params && params.include instanceof Array) {
@@ -147,12 +149,25 @@ const responseJsona = (response, callback, resolve) => {
 
 export const JsonApiResource = function(resource, config = {}) {
     let endpoints = {}
+    let resourceNamePlural = pluralize(resource)
+    let resourceNameSingular = pluralize.singular(resource)
     config = extend(defaultConfig, config)
     methods.forEach((method) => {
-        let resourceName = (method.pluralize) ? pluralize(resource) : pluralize.singular(resource)
+        let resourceName = (method.pluralize) ? resourceNamePlural : resourceNameSingular
         let endpointName = camelCase(`${method.name}-${resourceName}`)
-        endpoints[endpointName] = (...args) => method.promise(pluralize(resource), config, ...args)
+        endpoints[endpointName] = (...args) => method.promise(resourceNamePlural, config, ...args)
     })
+    endpoints[camelCase(`update-${resourceNameSingular}-relationship`)] = (entity, relation, payload, callback) => {
+        return new Promise((resolve, reject) => {
+            config.httpService.patch(`${resource}/${getEntityId(entity)}/relationships/${relation}`, { data: payload })
+            .then((response) => responseRaw(response, callback, resolve))
+            .catch((error) => {
+                config.errorEventHandler(error, (error) => {
+                    responseError(error, callback, reject)
+                })
+            })
+        })
+    }
     return endpoints
 }
 
