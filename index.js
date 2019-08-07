@@ -16,8 +16,11 @@ export const methods = [
         method: 'GET',
         pluralize: true,
         promise(resource, config, params, callback) {
+            console.log(parseParams(params))
             return new Promise((resolve, reject) => {
-                config.httpService[`${this.method.toLowerCase()}`](resource, parseParams(params) || {})
+                config.httpService[`${this.method.toLowerCase()}`](resource, {
+                    params: parseParams(params) || {}
+                })
                 .then((response) => responseJsona(response, callback, resolve))
                 .catch((error) => {
                     config.errorEventHandler(error, (error) => {
