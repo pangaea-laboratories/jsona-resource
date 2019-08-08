@@ -16,7 +16,6 @@ export const methods = [
         method: 'GET',
         pluralize: true,
         promise(resource, config, params, callback) {
-            console.log(parseParams(params))
             return new Promise((resolve, reject) => {
                 config.httpService[`${this.method.toLowerCase()}`](resource, {
                     params: parseParams(params) || {}
