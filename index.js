@@ -160,8 +160,14 @@ export const JsonApiResource = function(resource, config = {}) {
         endpoints[endpointName] = (...args) => method.promise(resourceNamePlural, config, ...args)
     })
     endpoints[camelCase(`update-${resourceNameSingular}-relationship`)] = (entity, relation, payload, callback) => {
+        let params = dataFormatter.serialize({ stuff: payload })
         return new Promise((resolve, reject) => {
-            config.httpService.patch(`${resource}/${getEntityId(entity)}/relationships/${relation}`, { data: payload })
+            config.httpService.patch(`${resource}/${getEntityId(entity)}/relationships/${relation}`, {
+                data: {
+                    "id": params.data.id,
+                    "type": params.data.type
+                }
+            })
             .then((response) => responseRaw(response, callback, resolve))
             .catch((error) => {
                 config.errorEventHandler(error, (error) => {
