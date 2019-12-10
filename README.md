@@ -25,7 +25,10 @@ const httpService = axios.create({
 });
 
 const params = {
-    include: 'country'
+    include: 'country',
+    filters: {
+        continent: 'europe'
+    }
 }
 
 const resource = JsonApiResource('orders', httpService)
