@@ -126,6 +126,14 @@ const parseParams = (params) => {
     if(params && params.include instanceof Array) {
         params.include = params.include.join(',')
     }
+    
+    if (params.filters instanceof Object) {
+        Object.keys(params.filters).forEach((key) => {
+            params['filter[' + key + ']'] = params.filters[key]
+        });
+
+        delete params.filters;
+    }
     return params
 }
 
