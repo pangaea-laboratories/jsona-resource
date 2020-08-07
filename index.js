@@ -65,12 +65,12 @@ export const methods = [
         name: 'create',
         method: 'POST',
         pluralize: false,
-        promise(resource, config, entity, callback) {
-            entity = isObject(entity) ? { stuff: entity } : { stuff: {} }
+        promise(resource, config, entity, params = {}, callback) {
+            entity = { stuff: isObject(entity) ? entity : {}, includeNames: params.include || [] }
             entity.stuff.type = resource
-            let params = dataFormatter.serialize(entity)
+            let data = dataFormatter.serialize(entity)
             return new Promise((resolve, reject) => {
-                config.httpService[`${this.method.toLowerCase()}`](`${resource}`, params)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}`, data, { params: parseParams(params) })
                 .then((response) => responseJsona(response, callback, resolve))
                 .catch((error) => {
                     config.errorEventHandler(error, (error) => {
@@ -84,10 +84,10 @@ export const methods = [
         name: 'update',
         method: 'PATCH',
         pluralize: false,
-        promise(resource, config, entity, callback) {
-            let params = dataFormatter.serialize({ stuff: entity })
+        promise(resource, config, entity, params = {}, callback) {
+            let data = dataFormatter.serialize({ stuff: entity, includeNames: params.include || [] })
             return new Promise((resolve, reject) => {
-                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${getEntityId(entity)}`, params)
+                config.httpService[`${this.method.toLowerCase()}`](`${resource}/${getEntityId(entity)}`, data, { params: parseParams(params) })
                 .then((response) => responseJsona(response, callback, resolve))
                 .catch((error) => {
                     config.errorEventHandler(error, (error) => {
